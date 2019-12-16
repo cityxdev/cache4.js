@@ -1,5 +1,5 @@
 # cache4.js
-###A simple cache library for JavaScript that requires jQuery and browser localStorage. Includes caching of Ajax requests.
+### A simple cache library for JavaScript that requires jQuery and browser localStorage. Includes caching of Ajax requests.
 
 Includes the basic features of caching values by key, removing them and setting expiration times.
 The most advanced feature is a wrapper for $.ajax that caches GET requests using the url and the headers defined in the configuration to generate a cache key.
@@ -7,7 +7,7 @@ It is compatible with promisses and the return value of the wrapper can and shou
 
 Example:
 
-`ajaxCache({
+` ajaxCache({
   url: '/rest/path/endpoint?param=10'
   success: function (data) {
     console.log('success');
@@ -29,12 +29,12 @@ Example:
 }).always(function (data) {
     console.log("always");
     console.log(data);
-});`
+}); `
 
 Other functions:
 
-`loadCache(key,defVal)
+` loadCache(key,defVal)
 storeCache(key,value,expireSecs)
 removeCache(key)
 clearCaches()
-clearExpiredCaches()`
+clearExpiredCaches() `
