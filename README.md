@@ -59,6 +59,7 @@ Other functions:
 
 ```javascript
 loadCache(key,defVal)
+getCache(key,func,expireSecs)
 storeCache(key,value,expireSecs)
 removeCache(key)
 clearCaches()
