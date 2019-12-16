@@ -7,7 +7,8 @@ It is compatible with promisses and the return value of the wrapper can and shou
 
 Example:
 
-```ajaxCache({
+```javascript
+ajaxCache({
   url: '/rest/path/endpoint?param=10'
   success: function (data) {
     console.log('success');
@@ -29,12 +30,15 @@ Example:
 }).always(function (data) {
     console.log("always");
     console.log(data);
-});```
+});
+```
 
 Other functions:
 
-```loadCache(key,defVal)
+```javascript
+loadCache(key,defVal)
 storeCache(key,value,expireSecs)
 removeCache(key)
 clearCaches()
-clearExpiredCaches()```
+clearExpiredCaches()
+```
