@@ -31,6 +31,28 @@ ajaxCache({
     console.log("always");
     console.log(data);
 });
+
+//or
+let ajaxCalls = [];
+for(let i = 0 ; i < 10 ; i++){
+  ajaxCalls.push(ajaxCache({
+    url: '/rest/path/endpoint?param='=i,
+    context:{
+      iter:i
+    },
+    success: function(res){
+      console.log('res for iter '+i);
+      console.log(res);
+    }
+  }));
+}
+Promise.all(ajaxCalls).then(function () {
+    console.log('finished');
+}).catch(function (e) {
+    console.log(e);
+});
+
+
 ```
 
 Other functions:
