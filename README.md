@@ -8,7 +8,7 @@ It is compatible with promisses and the return value of the wrapper can and shou
 Example:
 
 ```javascript
-ajaxCache({
+cache4js.ajaxCache({
   url: '/rest/path/endpoint?param=10'
   success: function (data) {
     console.log('success');
@@ -35,7 +35,7 @@ ajaxCache({
 //or
 let ajaxCalls = [];
 for(let i = 0 ; i < 10 ; i++){
-  ajaxCalls.push(ajaxCache({
+  ajaxCalls.push(cache4js.ajaxCache({
     url: '/rest/path/endpoint?param='+i,
     context:{
       iter:i
@@ -58,10 +58,10 @@ Promise.all(ajaxCalls).then(function () {
 Other functions:
 
 ```javascript
-loadCache(key,defVal)
-getCache(key,func,expireSecs)
-storeCache(key,value,expireSecs)
-removeCache(key)
-clearCaches()
-clearExpiredCaches()
+cache4js.loadCache(key,defVal)
+cache4js.getCache(key,func,expireSecs)
+cache4js.storeCache(key,value,expireSecs)
+cache4js.removeCache(key)
+cache4js.clearCaches()
+cache4js.clearExpiredCaches()
 ```
