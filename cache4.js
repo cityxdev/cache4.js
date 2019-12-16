@@ -1,4 +1,4 @@
-/* code4js - v1 - 2019-12-16 - https://github.com/cityxdev/cache4.js */
+/* cache4.js - v1 - 2019-12-16 - https://github.com/cityxdev/cache4.js */
 
 $(function(){
     'use strict';
