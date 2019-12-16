@@ -36,12 +36,12 @@ ajaxCache({
 let ajaxCalls = [];
 for(let i = 0 ; i < 10 ; i++){
   ajaxCalls.push(ajaxCache({
-    url: '/rest/path/endpoint?param='=i,
+    url: '/rest/path/endpoint?param='+i,
     context:{
       iter:i
     },
     success: function(res){
-      console.log('res for iter '+i);
+      console.log('res for iter '+this.iter);
       console.log(res);
     }
   }));
