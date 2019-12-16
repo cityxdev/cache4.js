@@ -16,6 +16,20 @@ const loadCache = function(key, defVal) {
 };
 
 /**
+ * Obtain a cached value or calculate it if necessary
+ * @param key The key of the cached value
+ * @param func The function to calculate the value (only gets called if necessary)
+ * @param expireSecs If defined, the number of seconds after which the cached value expires
+ * @returns The cached value, or the calculated value if the cached value is not present or has expired
+ */
+const getCache = function(key, func, expireSecs) {
+    const res = loadCache(key);
+    if(res===undefined || res===null)
+        return storeCache(key,func());
+    return res;
+};
+
+/**
  * Store a new cache if possible
  * This function fails if the local storage is full
  * @param key The key of the cache to store
