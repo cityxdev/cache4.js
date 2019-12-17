@@ -2,7 +2,7 @@
 
 $(function(){
     'use strict';
- 
+
     function initCache4js() {
         var _cache4js={};
 
@@ -17,10 +17,9 @@ $(function(){
          * @param maxElements {number} The max
          */
         _cache4js.setMaxElements = function(maxElements){
-            const oldMax = _cache4js.getMaxElements();
             localStorage.setItem('maxElements'+_cache4js.CACHE_NAMESPACE,maxElements.toString());
-            if(oldMax>maxElements)
-                _cache4js.clearExpiredCaches();
+            if(_cache4js.getSize()>maxElements)
+                setTimeout(_cache4js.clearExpiredCaches,10);
         };
 
         /**
