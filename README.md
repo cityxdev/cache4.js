@@ -58,6 +58,9 @@ Promise.all(ajaxCalls).then(function () {
 Other functions:
 
 ```javascript
+cache4js.setMaxElements(maxElements)
+cache4js.getMaxElements()
+cache4js.getSize()
 cache4js.loadCache(key,defVal)
 cache4js.getCache(key,func,expireSecs)
 cache4js.storeCache(key,value,expireSecs)
