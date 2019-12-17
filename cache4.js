@@ -2,17 +2,50 @@
 
 $(function(){
     'use strict';
-
+ 
     function initCache4js() {
         var _cache4js={};
 
         _cache4js.CACHE_NAMESPACE = '__CACHE4JS__';
 
+        var size = undefined;
+        const DEFAULT_MAX_ELEMENTS = 150;
+
+
+        /**
+         * Set the maximum number of elements this cache can hold
+         * @param maxElements {number} The max
+         */
+        _cache4js.setMaxElements = function(maxElements){
+            const oldMax = _cache4js.getMaxElements();
+            localStorage.setItem('maxElements'+_cache4js.CACHE_NAMESPACE,maxElements.toString());
+            if(oldMax>maxElements)
+                _cache4js.clearExpiredCaches();
+        };
+
+        /**
+         * Obtain the maximum number of elements this cache can hold
+         * @returns {number} A number set with cache4js.setMaxElements or the default 150
+         */
+        _cache4js.getMaxElements = function(){
+            const stored = localStorage.getItem('maxElements'+_cache4js.CACHE_NAMESPACE);
+            return stored?parseInt(stored):undefined;
+        };
+
+        /**
+         * The current size of this cache
+         * @returns {number} The number of cached elements
+         */
+        _cache4js.getSize = function(){
+            return size;
+        };
+
+
         /**
          * Obtain a cached value
-         * @param key The key of the cached value
-         * @param defVal A default value
-         * @returns The cached value, or the default value if the cached value is not present or has expired
+         * @param key {string} The key of the cached value
+         * @param defVal {*} A default value
+         * @returns {*} The cached value, or the default value if the cached value is not present or has expired
          */
         _cache4js.loadCache = function(key, defVal) {
             const item = localStorage.getItem(_cache4js.CACHE_NAMESPACE+btoa(key));
@@ -25,27 +58,34 @@ $(function(){
 
         /**
          * Obtain a cached value or calculate it if necessary
-         * @param key The key of the cached value
-         * @param func The function to calculate the value (only gets called if necessary)
-         * @param expireSecs If defined, the number of seconds after which the cached value expires
-         * @returns The cached value, or the calculated value if the cached value is not present or has expired
+         * @param key {string} The key of the cached value
+         * @param func {function} The function to calculate the value (only gets called if necessary)
+         * @param expireSecs {number} If defined, the number of seconds after which the cached value expires
+         * @returns {*} The cached value, or the calculated value if the cached value is not present or has expired
          */
         _cache4js.getCache = function(key, func, expireSecs) {
-            const res = _cache4js.loadCache(key);
+            const res = _cache4js.loadCache(key,undefined);
             if(res===undefined || res===null)
-                return _cache4js.storeCache(key,func());
+                return _cache4js.storeCache(key,func(),expireSecs);
             return res;
         };
 
         /**
          * Store a new cache if possible
          * This function fails if the local storage is full
-         * @param key The key of the cache to store
-         * @param value The value to store
-         * @param expireSecs If defined, the number of seconds after which the cached value expires
-         * @returns The cached value
+         * @param key {string} The key of the cache to store
+         * @param value {*} The value to store
+         * @param expireSecs {number} If defined, the number of seconds after which the cached value expires
+         * @returns {*} The cached value
          */
         _cache4js.storeCache = function(key, value, expireSecs) {
+            if(size>=_cache4js.getMaxElements()){
+                _cache4js.clearExpiredCaches();
+                if(size>=_cache4js.getMaxElements()){
+                    console.log('Cache is full. Size: '+size+', max elements: '+_cache4js.getMaxElements());
+                    return value;
+                }
+            }
             if(value!==null && value!==undefined) {
                 let cache = {
                     value: value,
@@ -54,6 +94,7 @@ $(function(){
                 };
                 try {
                     localStorage.setItem(_cache4js.CACHE_NAMESPACE + btoa(key), JSON.stringify(cache));
+                    size++;
                 } catch (e) {
                     console.log(e);
                 }
@@ -64,10 +105,13 @@ $(function(){
 
         /**
          * Remove a cache
-         * @param key The key of the cache to remove
+         * @param key {string} The key of the cache to remove
          */
         _cache4js.removeCache = function (key) {
-            localStorage.removeItem(key);
+            if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                localStorage.removeItem(key);
+                size--;
+            }
         };
 
         /**
@@ -75,8 +119,10 @@ $(function(){
          */
         _cache4js.clearCaches = function () {
             $.each(localStorage, function (key, value) {
-                if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE))
+                if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
                     localStorage.removeItem(key);
+                    size--;
+                }
             });
         };
 
@@ -89,8 +135,10 @@ $(function(){
                     const item = localStorage.getItem(key);
                     const cache = item?JSON.parse(item):undefined;
                     const isExpired = cache&&cache.expireSecs&&Date.now()-cache.expireSecs*1000>cache.millis;
-                    if(isExpired)
+                    if(isExpired) {
                         localStorage.removeItem(key);
+                        size--;
+                    }
                 }
             });
         };
@@ -98,12 +146,12 @@ $(function(){
 
         /**
          * A wrapper to the $.ajax function that tries to retrieve the result form cache
-         * If the result is not present, falls back to $.ajax and returns the result of that call (but caches the result)
+         * If the result is not present or is expired, falls back to $.ajax and returns the result of that call (but caches the result)
          * The return value of this function should be used just like the return value of $.ajax
          * Only GET requests get cached
-         * @param jQueryAjaxConf The $.ajax configuration object
-         * @param expireSecs [optional] a number of seconds for the cache to last (default: 5 minutes)
-         * @returns An ajax execution
+         * @param jQueryAjaxConf {object} The $.ajax configuration object
+         * @param expireSecs {number} [optional] a number of seconds for the cache to last (default: 5 minutes)
+         * @returns {object} An ajax execution
          */
         _cache4js.ajaxCache = function (jQueryAjaxConf,expireSecs) {
             return new AjaxCacheObj(jQueryAjaxConf,expireSecs);
@@ -178,8 +226,24 @@ $(function(){
             return $.ajax(jQueryAjaxConf);
         };
 
+
+        //initial definitions
+        const _maxElements = _cache4js.getMaxElements();
+        if(!_maxElements)
+            _cache4js.setMaxElements(DEFAULT_MAX_ELEMENTS);
+
+        if(size===undefined) {
+            size=0;
+            $.each(localStorage, function (key, value) {
+                if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                    size++;
+                }
+            });
+        }
+
+
         return _cache4js;
-    } 
+    }
 
     if(typeof(window.cache4js) === 'undefined'){
         window.cache4js = initCache4js();
