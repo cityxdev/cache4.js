@@ -5,6 +5,8 @@ Includes the basic features of caching values by key, removing them and setting 
 The most advanced feature is a wrapper for $.ajax that caches GET requests using the url and the headers defined in the configuration to generate a cache key.
 It is compatible with promisses and the return value of the wrapper can and should be used just like the return value of $.ajax.
 
+If [lz-string](https://github.com/pieroxy/lz-string) is present, compresses the stored values (there is a limit of about 5mb of local storage).
+
 Example:
 
 ```javascript
