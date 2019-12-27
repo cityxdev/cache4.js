@@ -1,4 +1,4 @@
-/* cache4.js - v1 - 2019-12-16 - https://github.com/cityxdev/cache4.js */
+/* cache4.js - v1.1 - 2019-12-27 - https://github.com/cityxdev/cache4.js */
 
 $(function(){
     'use strict';
@@ -39,7 +39,6 @@ $(function(){
             return size;
         };
 
-
         /**
          * Obtain a cached value
          * @param key {string} The key of the cached value
@@ -48,7 +47,7 @@ $(function(){
          */
         _cache4js.loadCache = function(key, defVal) {
             const item = localStorage.getItem(_cache4js.CACHE_NAMESPACE+btoa(key));
-            const cache = item?JSON.parse(item):undefined;
+            const cache = item?JSON.parse(typeof(LZString)!=='undefined'?LZString.decompress(item):item):undefined;
             const isExpired = cache&&cache.expireSecs&&Date.now()-cache.expireSecs*1000>cache.millis;
             if(isExpired)
                 _cache4js.removeCache(key);
@@ -59,7 +58,7 @@ $(function(){
          * Obtain a cached value or calculate it if necessary
          * @param key {string} The key of the cached value
          * @param func {function} The function to calculate the value (only gets called if necessary)
-         * @param expireSecs {number} If defined, the number of seconds after which the cached value expires
+         * @param expireSecs {number} [optional] If defined, the number of seconds after which the cached value expires
          * @returns {*} The cached value, or the calculated value if the cached value is not present or has expired
          */
         _cache4js.getCache = function(key, func, expireSecs) {
@@ -72,9 +71,10 @@ $(function(){
         /**
          * Store a new cache if possible
          * This function fails if the local storage is full
+         * If LZString is present, compresses the cache content before storage
          * @param key {string} The key of the cache to store
          * @param value {*} The value to store
-         * @param expireSecs {number} If defined, the number of seconds after which the cached value expires
+         * @param expireSecs {number} [optional] If defined, the number of seconds after which the cached value expires
          * @returns {*} The cached value
          */
         _cache4js.storeCache = function(key, value, expireSecs) {
@@ -92,7 +92,7 @@ $(function(){
                     expireSecs: expireSecs
                 };
                 try {
-                    localStorage.setItem(_cache4js.CACHE_NAMESPACE + btoa(key), JSON.stringify(cache));
+                    localStorage.setItem(_cache4js.CACHE_NAMESPACE + btoa(key), typeof(LZString)!=='undefined'?LZString.compress(JSON.stringify(cache)):JSON.stringify(cache));
                     size++;
                 } catch (e) {
                     console.log(e);
@@ -132,7 +132,7 @@ $(function(){
             $.each(localStorage, function (key, value) {
                 if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
                     const item = localStorage.getItem(key);
-                    const cache = item?JSON.parse(item):undefined;
+                    const cache = item?JSON.parse(typeof(LZString)!=='undefined'?LZString.decompress(item):item):undefined;
                     const isExpired = cache&&cache.expireSecs&&Date.now()-cache.expireSecs*1000>cache.millis;
                     if(isExpired) {
                         localStorage.removeItem(key);
