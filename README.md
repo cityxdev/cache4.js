@@ -7,6 +7,8 @@ It is compatible with promisses and the return value of the wrapper can and shou
 
 If [lz-string](https://github.com/pieroxy/lz-string) is present, compresses the stored values (there is a limit of about 5mb of local storage).
 
+On storing a value, if expireSecs is defined to a value lower than 5*60 (5 mins), the stored value is considered "short lasting" and thus stored in sessionStorage instead of localStorage (after closing the browser tab, sessionStorage is cleared)
+
 Example:
 
 ```javascript
