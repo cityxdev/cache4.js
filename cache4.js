@@ -1,4 +1,4 @@
-/* cache4.js - v1.1 - 2019-12-27 - https://github.com/cityxdev/cache4.js */
+/* cache4.js - v1.2 - 2019-12-28 - https://github.com/cityxdev/cache4.js */
 
 $(function(){
     'use strict';
@@ -8,8 +8,30 @@ $(function(){
 
         _cache4js.CACHE_NAMESPACE = '__CACHE4JS__';
 
-        var size = undefined;
         const DEFAULT_MAX_ELEMENTS = 150;
+        const LONG_LASTING_THRESHOLD = 5*60;
+
+        const lzStringExists = typeof(LZString) !== 'undefined';
+
+        var size = undefined;
+
+        function generateCacheKey(key) {
+            return _cache4js.CACHE_NAMESPACE + btoa(key);
+        }
+
+        function unmarshallCacheItem(itemStr) {
+            return itemStr
+                ? JSON.parse(
+                    lzStringExists
+                        ? LZString.decompress(itemStr)
+                        : itemStr
+                )
+                : undefined;
+        }
+
+        function marshallCacheItem(itemObj) {
+            return lzStringExists ? LZString.compress(JSON.stringify(itemObj)) : JSON.stringify(itemObj);
+        }
 
 
         /**
@@ -46,12 +68,19 @@ $(function(){
          * @returns {*} The cached value, or the default value if the cached value is not present or has expired
          */
         _cache4js.loadCache = function(key, defVal) {
-            const item = localStorage.getItem(_cache4js.CACHE_NAMESPACE+btoa(key));
-            const cache = item?JSON.parse(typeof(LZString)!=='undefined'?LZString.decompress(item):item):undefined;
-            const isExpired = cache&&cache.expireSecs&&Date.now()-cache.expireSecs*1000>cache.millis;
-            if(isExpired)
-                _cache4js.removeCache(key);
-            return cache&&!isExpired ? cache.value:defVal;
+            function load(storage) {
+                const item = storage.getItem(generateCacheKey(key));
+                const cache = unmarshallCacheItem(item);
+                const isExpired = cache && cache.expireSecs && Date.now() - cache.expireSecs * 1000 > cache.millis;
+                if (isExpired)
+                    _cache4js.removeCache(key);
+                return cache && !isExpired ? cache.value : undefined;
+            }
+
+            let res = load(localStorage);
+            if(!res)
+                res = load(sessionStorage);
+            return res?res:defVal;
         };
 
         /**
@@ -68,36 +97,67 @@ $(function(){
             return res;
         };
 
+
+
         /**
          * Store a new cache if possible
          * This function fails if the local storage is full
          * If LZString is present, compresses the cache content before storage
+         *
+         * If expireSecs is defined to a value lower than 5*60 (5 mins), the stored value is considered "short lasting" and thus stored in sessionStorage instead of localStorage (after closing the browser tab, sessionStorage is cleared)
          * @param key {string} The key of the cache to store
          * @param value {*} The value to store
          * @param expireSecs {number} [optional] If defined, the number of seconds after which the cached value expires
          * @returns {*} The cached value
          */
         _cache4js.storeCache = function(key, value, expireSecs) {
-            if(size>=_cache4js.getMaxElements()){
+            if(size>=_cache4js.getMaxElements())
                 _cache4js.clearExpiredCaches();
-                if(size>=_cache4js.getMaxElements()){
-                    console.log('Cache is full. Size: '+size+', max elements: '+_cache4js.getMaxElements());
-                    return value;
-                }
+
+            const cacheKey = generateCacheKey(key);
+
+            const existsInShortLasting = sessionStorage[cacheKey];
+            const existsInLongLasting = localStorage[cacheKey];
+            const alreadyExists = existsInShortLasting || existsInLongLasting;
+
+            if(size>=_cache4js.getMaxElements() && !alreadyExists){
+                console.log(_cache4js.CACHE_NAMESPACE+' Cache is full. Size: '+size+', max elements: '+_cache4js.getMaxElements());
+                return value;
             }
+
             if(value!==null && value!==undefined) {
+                const isLongLasting = expireSecs===null || expireSecs===undefined || (expireSecs<=0||expireSecs>LONG_LASTING_THRESHOLD);
+                const storage = !isLongLasting ? sessionStorage : localStorage;
+
+                if(isLongLasting && existsInShortLasting)
+                    sessionStorage.removeItem(cacheKey);
+                if(!isLongLasting && existsInLongLasting)
+                    localStorage.removeItem(cacheKey);
+
                 let cache = {
                     value: value,
                     millis: Date.now(),
                     expireSecs: expireSecs
                 };
+                const valString = marshallCacheItem(cache);
                 try {
-                    localStorage.setItem(_cache4js.CACHE_NAMESPACE + btoa(key), typeof(LZString)!=='undefined'?LZString.compress(JSON.stringify(cache)):JSON.stringify(cache));
-                    size++;
+                    storage.setItem(cacheKey, valString);
+                    if(!alreadyExists)
+                        size++;
+                    setTimeout(_cache4js.clearExpiredCaches,100);
                 } catch (e) {
-                    console.log(e);
+                    console.log(_cache4js.CACHE_NAMESPACE+' Error storing cache (1)');
+                    _cache4js.clearExpiredCaches();
+                    //try again, now having cleared where possible
+                    try {
+                        storage.setItem(cacheKey, valString);
+                        if(!alreadyExists)
+                            size++;
+                    } catch (e) {
+                        console.log(_cache4js.CACHE_NAMESPACE+' Error storing cache (2)');
+                        console.log(e);
+                    }
                 }
-                setTimeout(_cache4js.clearExpiredCaches,10);
             }
             return value;
         };
@@ -107,8 +167,12 @@ $(function(){
          * @param key {string} The key of the cache to remove
          */
         _cache4js.removeCache = function (key) {
-            if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
-                localStorage.removeItem(key);
+            const cacheKey = generateCacheKey(key);
+            if(localStorage[cacheKey]) {
+                localStorage.removeItem(cacheKey);
+                size--;
+            } else if(sessionStorage[cacheKey]){
+                sessionStorage.removeItem(cacheKey);
                 size--;
             }
         };
@@ -117,31 +181,42 @@ $(function(){
          * Delete all caches
          */
         _cache4js.clearCaches = function () {
-            $.each(localStorage, function (key, value) {
-                if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
-                    localStorage.removeItem(key);
-                    size--;
-                }
-            });
+            function clear(storage) {
+                $.each(storage, function (key, value) {
+                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                        storage.removeItem(key);
+                        size--;
+                    }
+                });
+            }
+            clear(localStorage);
+            clear(sessionStorage);
         };
 
         /**
          * Delete all expired caches
          */
         _cache4js.clearExpiredCaches = function () {
-            $.each(localStorage, function (key, value) {
-                if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
-                    const item = localStorage.getItem(key);
-                    const cache = item?JSON.parse(typeof(LZString)!=='undefined'?LZString.decompress(item):item):undefined;
-                    const isExpired = cache&&cache.expireSecs&&Date.now()-cache.expireSecs*1000>cache.millis;
-                    if(isExpired) {
-                        localStorage.removeItem(key);
-                        size--;
+            let count = 0;
+            function clear(storage) {
+                storage = storage || localStorage;
+                $.each(storage, function (key, item) {
+                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                        const cache = unmarshallCacheItem(item);
+                        const isExpired = cache && cache.expireSecs && Date.now() - cache.expireSecs * 1000 > cache.millis;
+                        if (isExpired) {
+                            storage.removeItem(key);
+                            size--;
+                            count++;
+                        }
                     }
-                }
-            });
+                });
+            }
+            clear(localStorage);
+            clear(sessionStorage);
+            if (count > 0)
+                console.log(_cache4js.CACHE_NAMESPACE+" Cleared "+count+" expired caches");
         };
-
 
         /**
          * A wrapper to the $.ajax function that tries to retrieve the result form cache
@@ -155,6 +230,7 @@ $(function(){
         _cache4js.ajaxCache = function (jQueryAjaxConf,expireSecs) {
             return new AjaxCacheObj(jQueryAjaxConf,expireSecs);
         };
+
 
         const AjaxCacheObj = function (jQueryAjaxConf, expireSecs) {
 
@@ -233,11 +309,15 @@ $(function(){
 
         if(size===undefined) {
             size=0;
-            $.each(localStorage, function (key, value) {
-                if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
-                    size++;
-                }
-            });
+            const count = function (storage) {
+                $.each(storage, function (key, value) {
+                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                        size++;
+                    }
+                });
+            };
+            count(localStorage);
+            count(sessionStorage);
         }
 
 
