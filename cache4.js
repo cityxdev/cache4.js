@@ -1,9 +1,32 @@
-/* cache4.js - v1.2 - 2019-12-28 - https://github.com/cityxdev/cache4.js */
+/* cache4.js - v1.2.1 - 2019-12-30 - https://github.com/cityxdev/cache4.js */
 
 $(function(){
     'use strict';
 
     function initCache4js() {
+
+        const navigatorCode = (function(){
+            var ua= navigator.userAgent, tem,
+                M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+            if(/trident/i.test(M[1])){
+                tem=  /\brv[ :]+(\d+)/g.exec(ua) || [];
+                return 'IE '+(tem[1] || '');
+            }
+            if(M[1]=== 'Chrome'){
+                tem= ua.match(/\b(OPR|Edge)\/(\d+)/);
+                if(tem!= null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
+            }
+            M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
+            if((tem= ua.match(/version\/(\d+)/i))!= null) M.splice(1, 1, tem[1]);
+            return M.join(' ');
+        })();
+        const isOpera = navigatorCode.indexOf('Opera')===0;
+        const isFirefox = navigatorCode.indexOf('Firefox')===0;
+        const isSafari = navigatorCode.indexOf('Safari')===0;
+        const isChrome = navigatorCode.indexOf('Chrome')===0;
+        const isIE = navigatorCode.indexOf('IE')===0;
+        const isEdge = navigatorCode.indexOf('Edge')===0;
+
         var _cache4js={};
 
         _cache4js.CACHE_NAMESPACE = '__CACHE4JS__';
@@ -11,7 +34,7 @@ $(function(){
         const DEFAULT_MAX_ELEMENTS = 150;
         const LONG_LASTING_THRESHOLD = 5*60;
 
-        const lzStringExists = typeof(LZString) !== 'undefined';
+        const useCompression = !isEdge && !isIE && typeof(LZString) !== 'undefined';
 
         var size = undefined;
 
@@ -22,7 +45,7 @@ $(function(){
         function unmarshallCacheItem(itemStr) {
             return itemStr
                 ? JSON.parse(
-                    lzStringExists
+                    useCompression
                         ? LZString.decompress(itemStr)
                         : itemStr
                 )
@@ -30,7 +53,7 @@ $(function(){
         }
 
         function marshallCacheItem(itemObj) {
-            return lzStringExists ? LZString.compress(JSON.stringify(itemObj)) : JSON.stringify(itemObj);
+            return useCompression ? LZString.compress(JSON.stringify(itemObj)) : JSON.stringify(itemObj);
         }
 
 
@@ -96,8 +119,6 @@ $(function(){
                 return _cache4js.storeCache(key,func(),expireSecs);
             return res;
         };
-
-
 
         /**
          * Store a new cache if possible
