@@ -2,7 +2,7 @@
 ### A simple cache library for JavaScript that requires jQuery and browser localStorage. Includes caching of Ajax requests.
 
 Includes the basic features of caching values by key, removing them and setting expiration times.
-The most advanced feature is a wrapper for $.ajax that caches GET requests using the url and the headers defined in the configuration to generate a cache key.
+The most advanced feature is a wrapper for $.ajax that caches GET and HEAD requests using the url and the headers defined in the configuration to generate a cache key.
 It is compatible with promisses and the return value of the wrapper can and should be used just like the return value of $.ajax.
 
 If [lz-string](https://github.com/pieroxy/lz-string) is present (and browser is not MS Edge), compresses the stored values (there is a limit of about 5mb of local storage).
