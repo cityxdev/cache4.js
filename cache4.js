@@ -243,7 +243,7 @@ $(function(){
          * A wrapper to the $.ajax function that tries to retrieve the result form cache
          * If the result is not present or is expired, falls back to $.ajax and returns the result of that call (but caches the result)
          * The return value of this function should be used just like the return value of $.ajax
-         * Only GET requests get cached
+         * Only GET and HEAD requests get cached
          * @param jQueryAjaxConf {object} The $.ajax configuration object
          * @param expireSecs {number} [optional] a number of seconds for the cache to last (default: 5 minutes)
          * @returns {object} An ajax execution
@@ -259,16 +259,18 @@ $(function(){
 
             this._data = undefined;
 
-            expireSecs=expireSecs||5*60;
-            if(!jQueryAjaxConf.method || jQueryAjaxConf.method.toLowerCase()!=='get'){
+            if(!jQueryAjaxConf.method || jQueryAjaxConf.method.toLowerCase()!=='get' || jQueryAjaxConf.method.toLowerCase()!=='head'){
                 if(jQueryAjaxConf.url){
-                    const fromCache = _cache4js.loadCache(jQueryAjaxConf.url+(jQueryAjaxConf.headers&&Object.keys(jQueryAjaxConf.headers)>0?JSON.stringify(jQueryAjaxConf.headers):''),undefined);
+                    const key = jQueryAjaxConf.url
+                        +(jQueryAjaxConf.headers&&Object.keys(jQueryAjaxConf.headers)>0?JSON.stringify(jQueryAjaxConf.headers):'')
+                        +(jQueryAjaxConf.data?JSON.stringify(jQueryAjaxConf.data):'');
+                    const fromCache = _cache4js.loadCache(key,undefined);
+
                     if(jQueryAjaxConf.context)
                         for(let k in jQueryAjaxConf.context)
                             this[k]=jQueryAjaxConf.context[k];
+
                     if(fromCache!==null && fromCache!==undefined) {
-
-
                         _self._data = fromCache;
 
                         if (jQueryAjaxConf.success) {
@@ -307,7 +309,7 @@ $(function(){
                         let oldSuccess = jQueryAjaxConf.success;
                         jQueryAjaxConf.context=jQueryAjaxConf.context?jQueryAjaxConf.context:{};
                         jQueryAjaxConf.context.cacheSuccess=oldSuccess;
-                        jQueryAjaxConf.context.cacheKey=jQueryAjaxConf.url+(jQueryAjaxConf.headers&&Object.keys(jQueryAjaxConf.headers)>0?JSON.stringify(jQueryAjaxConf.headers):'');
+                        jQueryAjaxConf.context.cacheKey=key;
                         jQueryAjaxConf.context.expireSecs=expireSecs;
                         jQueryAjaxConf.success = function (data,textStatus,jqXHR) {
                             _cache4js.storeCache(this.cacheKey,data,this.expireSecs);
