@@ -1,4 +1,4 @@
-/* cache4.js - v1.2.1 - 2019-12-30 - https://github.com/cityxdev/cache4.js */
+/* cache4.js - v1.2.2 - 2020-01-08 - https://github.com/cityxdev/cache4.js */
 
 $(function(){
     'use strict';
@@ -43,13 +43,18 @@ $(function(){
         }
 
         function unmarshallCacheItem(itemStr) {
-            return itemStr
-                ? JSON.parse(
-                    useCompression
-                        ? LZString.decompress(itemStr)
-                        : itemStr
-                )
-                : undefined;
+            try {
+                return itemStr
+                    ? JSON.parse(
+                        useCompression
+                            ? LZString.decompress(itemStr)
+                            : itemStr
+                    )
+                    : undefined;
+            }catch (e) {
+                console.log(e);
+                return undefined;
+            }
         }
 
         function marshallCacheItem(itemObj) {
@@ -95,7 +100,7 @@ $(function(){
                 const item = storage.getItem(generateCacheKey(key));
                 const cache = unmarshallCacheItem(item);
                 const isExpired = cache && cache.expireSecs && Date.now() - cache.expireSecs * 1000 > cache.millis;
-                if (isExpired)
+                if ((item&&!cache) || isExpired)
                     _cache4js.removeCache(key);
                 return cache && !isExpired ? cache.value : undefined;
             }
@@ -225,7 +230,7 @@ $(function(){
                     if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
                         const cache = unmarshallCacheItem(item);
                         const isExpired = cache && cache.expireSecs && Date.now() - cache.expireSecs * 1000 > cache.millis;
-                        if (isExpired) {
+                        if ((item&&!cache) || isExpired) {
                             storage.removeItem(key);
                             size--;
                             count++;
