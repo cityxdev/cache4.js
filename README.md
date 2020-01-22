@@ -66,6 +66,8 @@ Other functions:
 ```javascript
 cache4js.setMaxElements(maxElements)
 cache4js.getMaxElements()
+cache4js.setLocalNamespace(localNS)
+cache4js.getLocalNamespace()
 cache4js.getSize()
 cache4js.loadCache(key,defVal)
 cache4js.getCache(key,func,expireSecs)
