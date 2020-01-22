@@ -1,4 +1,4 @@
-/* cache4.js - v1.2.2 - 2020-01-08 - https://github.com/cityxdev/cache4.js */
+/* cache4.js - v1.2.3 - 2020-01-22 - https://github.com/cityxdev/cache4.js */
 
 $(function(){
     'use strict';
@@ -38,8 +38,18 @@ $(function(){
 
         var size = undefined;
 
+        var _localNamespace = undefined;
+
+        function getLocalNamespaceKeyPart() {
+            return (_localNamespace ? _localNamespace + '_' : '');
+        }
+
         function generateCacheKey(key) {
-            return _cache4js.CACHE_NAMESPACE + btoa(key);
+            return _cache4js.CACHE_NAMESPACE + getLocalNamespaceKeyPart() + btoa(key);
+        }
+
+        function log(what) {
+            console.log('['+_cache4js.CACHE_NAMESPACE+(_localNamespace?_localNamespace:'')+']\t'+what);
         }
 
         function unmarshallCacheItem(itemStr) {
@@ -67,7 +77,7 @@ $(function(){
          * @param maxElements {number} The max
          */
         _cache4js.setMaxElements = function(maxElements){
-            localStorage.setItem('maxElements'+_cache4js.CACHE_NAMESPACE,maxElements.toString());
+            localStorage.setItem('maxElements'+_cache4js.CACHE_NAMESPACE+getLocalNamespaceKeyPart(),maxElements.toString());
             if(_cache4js.getSize()>maxElements)
                 setTimeout(_cache4js.clearExpiredCaches,10);
         };
@@ -77,8 +87,26 @@ $(function(){
          * @returns {number} A number set with cache4js.setMaxElements or the default 150
          */
         _cache4js.getMaxElements = function(){
-            const stored = localStorage.getItem('maxElements'+_cache4js.CACHE_NAMESPACE);
-            return stored?parseInt(stored):undefined;
+            const stored = localStorage.getItem('maxElements'+_cache4js.CACHE_NAMESPACE+getLocalNamespaceKeyPart());
+            return stored?parseInt(stored):DEFAULT_MAX_ELEMENTS;
+        };
+
+        /**
+         * Set a local namespace
+         * Useful for having different applications in the same domain (with different directories)
+         * @param localNs {string} The local namespace
+         */
+        _cache4js.setLocalNamespace = function(localNs){
+            _localNamespace=localNs;
+        };
+
+        /**
+         * Get the local namespace
+         * Useful for having different applications in the same domain (with different directories)
+         * @returns localNs {string} The local namespace
+         */
+        _cache4js.getLocalNamespace = function(){
+            return _localNamespace;
         };
 
         /**
@@ -147,7 +175,7 @@ $(function(){
             const alreadyExists = existsInShortLasting || existsInLongLasting;
 
             if(size>=_cache4js.getMaxElements() && !alreadyExists){
-                console.log(_cache4js.CACHE_NAMESPACE+' Cache is full. Size: '+size+', max elements: '+_cache4js.getMaxElements());
+                log(' Cache is full. Size: '+size+', max elements: '+_cache4js.getMaxElements());
                 return value;
             }
 
@@ -172,7 +200,7 @@ $(function(){
                         size++;
                     setTimeout(_cache4js.clearExpiredCaches,100);
                 } catch (e) {
-                    console.log(_cache4js.CACHE_NAMESPACE+' Error storing cache (1)');
+                    log(' Error storing cache (1)');
                     _cache4js.clearExpiredCaches();
                     //try again, now having cleared where possible
                     try {
@@ -180,7 +208,7 @@ $(function(){
                         if(!alreadyExists)
                             size++;
                     } catch (e) {
-                        console.log(_cache4js.CACHE_NAMESPACE+' Error storing cache (2)');
+                        log(' Error storing cache (2)');
                         console.log(e);
                     }
                 }
@@ -207,16 +235,19 @@ $(function(){
          * Delete all caches
          */
         _cache4js.clearCaches = function () {
+            let count = 0;
             function clear(storage) {
                 $.each(storage, function (key, value) {
-                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE+getLocalNamespaceKeyPart())) {
                         storage.removeItem(key);
                         size--;
+                        count++;
                     }
                 });
             }
             clear(localStorage);
             clear(sessionStorage);
+            log('Clear all caches ('+count+').');
         };
 
         /**
@@ -227,7 +258,7 @@ $(function(){
             function clear(storage) {
                 storage = storage || localStorage;
                 $.each(storage, function (key, item) {
-                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE+getLocalNamespaceKeyPart())) {
                         const cache = unmarshallCacheItem(item);
                         const isExpired = cache && cache.expireSecs && Date.now() - cache.expireSecs * 1000 > cache.millis;
                         if ((item&&!cache) || isExpired) {
@@ -241,7 +272,7 @@ $(function(){
             clear(localStorage);
             clear(sessionStorage);
             if (count > 0)
-                console.log(_cache4js.CACHE_NAMESPACE+" Cleared "+count+" expired caches");
+                log(" Cleared "+count+" expired caches");
         };
 
         /**
@@ -331,15 +362,11 @@ $(function(){
 
 
         //initial definitions
-        const _maxElements = _cache4js.getMaxElements();
-        if(!_maxElements)
-            _cache4js.setMaxElements(DEFAULT_MAX_ELEMENTS);
-
         if(size===undefined) {
             size=0;
             const count = function (storage) {
                 $.each(storage, function (key, value) {
-                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE)) {
+                    if (0 === key.indexOf(_cache4js.CACHE_NAMESPACE+getLocalNamespaceKeyPart())) {
                         size++;
                     }
                 });
