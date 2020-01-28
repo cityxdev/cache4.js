@@ -1,4 +1,4 @@
-/* cache4.js - v1.2.3 - 2020-01-22 - https://github.com/cityxdev/cache4.js */
+/* cache4.js - v1.2.4 - 2020-01-28 - https://github.com/cityxdev/cache4.js */
 
 $(function(){
     'use strict';
@@ -79,7 +79,11 @@ $(function(){
         _cache4js.setMaxElements = function(maxElements){
             localStorage.setItem('maxElements'+_cache4js.CACHE_NAMESPACE+getLocalNamespaceKeyPart(),maxElements.toString());
             if(_cache4js.getSize()>maxElements)
-                setTimeout(_cache4js.clearExpiredCaches,10);
+                setTimeout(function (){
+                    if(isIE)
+                        _cache4js.clearExpiredCaches();
+                    else Promise.resolve().then(_cache4js.clearExpiredCaches)
+                },10);
         };
 
         /**
@@ -198,7 +202,11 @@ $(function(){
                     storage.setItem(cacheKey, valString);
                     if(!alreadyExists)
                         size++;
-                    setTimeout(_cache4js.clearExpiredCaches,100);
+                    setTimeout(function (){
+                        if(isIE)
+                            _cache4js.clearExpiredCaches();
+                        else Promise.resolve().then(_cache4js.clearExpiredCaches)
+                    },100);
                 } catch (e) {
                     log(' Error storing cache (1)');
                     _cache4js.clearExpiredCaches();
